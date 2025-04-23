@@ -34,7 +34,7 @@ styles.add(ParagraphStyle(name='CommentKO', parent=styles['BodyText'], backColor
 styles.add(ParagraphStyle(name='Law', parent=styles['BodyText'], fontSize=7.5, fontName='Helvetica-Oblique', textColor=colors.HexColor('#7F8C8D'), spaceAfter=4))
 styles.add(ParagraphStyle(name='Criticity', parent=styles['BodyText'], fontSize=7.5, textColor=colors.HexColor('#C0392B'), spaceAfter=4))
 styles.add(ParagraphStyle(name='SectionHeading', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#2C3E50'), spaceBefore=10, spaceAfter=6))
-styles.add(ParagraphStyle(name='Conclusion', parent=styles['BodyText'], fontSize=9, leading=12, spaceBefore=12)))
+styles.add(ParagraphStyle(name='Conclusion', parent=styles['BodyText'], fontSize=9, leading=12, spaceBefore=12))))
 
 # Criticality ratings
 CRIT_LEVEL = {0: '10/10', 1: '9/10', 2: '8/10', 3: '7/10', 4: '6/10', 5: '5/10', 6: '7/10', 7: '9/10', 8: '6/10', 9: '8/10'}

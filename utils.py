@@ -7,109 +7,57 @@ import matplotlib.pyplot as plt
 import io
 import tempfile
 
-# Map des domaines RGPD
-DOMAIN_MAP = {
-    0: "Collecte de données",
-    1: "Politique de confidentialité",
-    2: "Registre des traitements",
-    3: "DPO",
-    4: "Stockage des données",
-    5: "Outils tiers",
-    6: "Processus de fuite",
-    7: "Consentement explicite",
-    8: "Rétention des données",
-    9: "Formation des salariés",
-}
-
-# Couleurs de criticité
-CRITICALITY_COLORS = {
-    'high': colors.red,
-    'medium': colors.orange,
-    'low': colors.green,
-}
-
-# Styles personnalisés
+# Styles
 styles = getSampleStyleSheet()
-styles.add(ParagraphStyle(name='TitleStyle', parent=styles['Title'], fontSize=18, textColor=colors.HexColor('#003366'), spaceAfter=12))
-styles.add(ParagraphStyle(name='HeadingStyle', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#003366'), spaceBefore=12, spaceAfter=6))
-styles.add(ParagraphStyle(name='NormalStyle', parent=styles['BodyText'], fontSize=10, leading=12))
-styles.add(ParagraphStyle(name='TipStyle', parent=styles['BodyText'], backColor=colors.HexColor('#f2f9ff'), borderPadding=6, fontSize=9, leading=11, spaceBefore=6, spaceAfter=6))
-styles.add(ParagraphStyle(name='LinkStyle', parent=styles['BodyText'], textColor=colors.HexColor('#005599'), fontSize=10, spaceBefore=4, spaceAfter=4))
-styles.add(ParagraphStyle(name='CitationStyle', parent=styles['BodyText'], fontSize=9, fontName='Helvetica-Oblique', leading=11, spaceBefore=2, spaceAfter=4))
+styles.add(ParagraphStyle(name='Title', parent=styles['Heading1'], fontSize=18, textColor=colors.HexColor('#003366')))
+styles.add(ParagraphStyle(name='SectionHeading', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#003366'), spaceBefore=12))
+styles.add(ParagraphStyle(name='Normal', parent=styles['BodyText'], fontSize=10, leading=12))
+styles.add(ParagraphStyle(name='Tip', parent=styles['BodyText'], backColor=colors.HexColor('#f2f9ff'), borderPadding=6, fontSize=9, leading=11, spaceBefore=6, spaceAfter=6))
+styles.add(ParagraphStyle(name='Link', parent=styles['BodyText'], textColor=colors.HexColor('#005599'), fontSize=10, spaceBefore=4, spaceAfter=4))
+styles.add(ParagraphStyle(name='Citation', parent=styles['BodyText'], fontSize=9, fontName='Helvetica-Oblique', leading=11, spaceBefore=2, spaceAfter=4))
 
-
-def generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion):
+def generate_pdf(responses, score, max_score, recommendations, links, tips, conclusion):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4,
-                            leftMargin=2*cm, rightMargin=2*cm,
-                            topMargin=2*cm, bottomMargin=2*cm)
+    doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
     story = []
 
-    # Titre et introduction
-    story.append(Paragraph("Rapport d'Audit de Conformité RGPD", styles['TitleStyle']))
-    intro_text = (
-        "Ce rapport propose une synthèse de votre conformité au RGPD selon la législation européenne. "
-        "Il met en évidence les points de conformité, les manquements critiques et fournit des recommandations."
-    )
-    story.append(Paragraph(intro_text, styles['NormalStyle']))
+    # Introduction
+    story.append(Paragraph("Rapport d'Audit de Conformité RGPD", styles['Title']))
+    intro = ("Ce rapport synthétise votre niveau de conformité RGPD. "
+             "Vous retrouvez vos points forts, les lacunes critiques et nos recommandations.")
+    story.append(Paragraph(intro, styles['Normal']))
     story.append(Spacer(1, 12))
 
-    # Score encadré
-    score_table = Table([[f"Score de conformité: <b>{score}/{max_score}</b>"]], colWidths=[6*cm])
-    score_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#005599')),
-        ('TEXTCOLOR', (0,0), (-1,-1), colors.white),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTSIZE', (0,0), (-1,-1), 12),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-        ('TOPPADDING', (0,0), (-1,-1), 6),
-    ]))
-    story.append(score_table)
-    story.append(Spacer(1, 12))
-
-    # Graphique
+    # Score and chart
+    story.append(Paragraph(f"<b>Score de conformité:</b> {score}/{max_score}", styles['Normal']))
     fig, ax = plt.subplots()
-    ax.bar(["Conformité", "Manquants"], [score, max_score-score])
+    ax.bar(['Conformité', 'Manquants'], [score, max_score - score])
     ax.set_ylim(0, max_score)
     with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as img:
         fig.savefig(img.name, bbox_inches='tight')
         story.append(Image(img.name, width=16*cm, height=9*cm))
     story.append(Spacer(1, 12))
 
-    # Sections par domaine
-    for idx, domain in DOMAIN_MAP.items():
-        resp = responses.get(idx, '')
-        crit_level = 'low' if resp == 'Oui' else ('high' if idx in [0,1,6,7] else 'medium')
-        color = CRITICALITY_COLORS[crit_level]
-
-        # Titre domaine
-        story.append(Paragraph(domain, styles['HeadingStyle']))
-        # Réponse
-        response_para = Paragraph(
-            f"<b>Réponse:</b> {resp}",
-            ParagraphStyle('RespStyle', parent=styles['BodyText'], backColor=color, fontSize=11, leading=13, spaceAfter=6, leftIndent=6)
-        )
-        story.append(response_para)
-
-        # Recommandation et lien
+    # Sections
+    for idx, question in enumerate(responses.keys()):
+        resp = responses[idx]
+        crit = 'red' if resp == 'Non' else 'green'
+        story.append(Paragraph(question, styles['SectionHeading']))
+        story.append(Paragraph(f"<b>Réponse:</b> {resp}", ParagraphStyle('Resp', parent=styles['BodyText'], backColor=colors.HexColor('#' + ('FFCCCC' if crit=='red' else 'CCFFCC')), fontSize=10, leading=12, spaceAfter=6, leftIndent=6)))
         if resp == 'Non':
-            link_info = links_detail.get(idx)
-            if link_info:
-                url, citation = link_info
-                story.append(Paragraph(f"<link href='{url}'>En savoir plus sur le site CNIL</link>", styles['LinkStyle']))
-                story.append(Paragraph(citation, styles['CitationStyle']))
-
-        # Tip
-        tip_text = tips.get(idx)
-        if tip_text:
-            story.append(Paragraph(f"<b>Tip:</b> {tip_text}", styles['TipStyle']))
-
+            if idx in recommendations:
+                story.append(Paragraph(recommendations[idx], styles['Normal']))
+            if idx in links:
+                url, citation = links[idx]
+                story.append(Paragraph(f"<link href='{url}'>Voir documentation CNIL</link>", styles['Link']))
+                story.append(Paragraph(citation, styles['Citation']))
+        if idx in tips:
+            story.append(Paragraph(f"<b>Tip:</b> {tips[idx]}", styles['Tip']))
         story.append(Spacer(1, 12))
-        story.append(PageBreak())
 
     # Conclusion
-    story.append(Paragraph("Conclusion et ressources complémentaires", styles['HeadingStyle']))
-    story.append(Paragraph(conclusion, styles['NormalStyle']))
+    story.append(Paragraph("Conclusion", styles['SectionHeading']))
+    story.append(Paragraph(conclusion, styles['Normal']))
 
     doc.build(story)
     buffer.seek(0)

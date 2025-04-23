@@ -1,9 +1,10 @@
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak
 from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import cm
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-import io
+from reportlab.lib.units import cm
 import matplotlib.pyplot as plt
+import io
 import tempfile
 
 # Map des domaines RGPD
@@ -27,105 +28,89 @@ CRITICALITY_COLORS = {
     'low': colors.green,
 }
 
-def generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion, chart_fig):
-    buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
+# Styles personnalisés
+styles = getSampleStyleSheet()
+styles.add(ParagraphStyle(name='TitleStyle', parent=styles['Title'], fontSize=18, textColor=colors.HexColor('#003366'), spaceAfter=12))
+styles.add(ParagraphStyle(name='HeadingStyle', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#003366'), spaceBefore=12, spaceAfter=6))
+styles.add(ParagraphStyle(name='NormalStyle', parent=styles['BodyText'], fontSize=10, leading=12))
+styles.add(ParagraphStyle(name='TipStyle', parent=styles['BodyText'], backColor=colors.HexColor('#f2f9ff'), borderPadding=6, fontSize=9, leading=11, spaceBefore=6, spaceAfter=6))
+styles.add(ParagraphStyle(name='LinkStyle', parent=styles['BodyText'], textColor=colors.HexColor('#005599'), fontSize=10, spaceBefore=4, spaceAfter=4))
+styles.add(ParagraphStyle(name='CitationStyle', parent=styles['BodyText'], fontSize=9, fontName='Helvetica-Oblique', leading=11, spaceBefore=2, spaceAfter=4))
 
-    # Titres et introduction
-    c.setFont("Helvetica-Bold", 18)
-    c.setFillColor(colors.HexColor('#003366'))
-    c.drawString(2*cm, height-2*cm, "Rapport d'Audit de Conformité RGPD")
-    c.setFont("Helvetica", 10)
-    intro = (
+
+def generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                            leftMargin=2*cm, rightMargin=2*cm,
+                            topMargin=2*cm, bottomMargin=2*cm)
+    story = []
+
+    # Titre et introduction
+    story.append(Paragraph("Rapport d'Audit de Conformité RGPD", styles['TitleStyle']))
+    intro_text = (
         "Ce rapport propose une synthèse de votre conformité au RGPD selon la législation européenne. "
         "Il met en évidence les points de conformité, les manquements critiques et fournit des recommandations."
     )
-    text = c.beginText(2*cm, height-2.8*cm)
-    text.setFillColor(colors.black)
-    text.textLines(intro)
-    c.drawText(text)
+    story.append(Paragraph(intro_text, styles['NormalStyle']))
+    story.append(Spacer(1, 12))
 
     # Score encadré
-    c.setFillColor(colors.HexColor('#005599'))
-    c.rect(2*cm, height-4.5*cm, 6*cm, 1*cm, fill=1)
-    c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(2.2*cm, height-4.1*cm, f"Score de conformité: {score}/{max_score}")
+    score_table = Table([[f"Score de conformité: <b>{score}/{max_score}</b>"]], colWidths=[6*cm])
+    score_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#005599')),
+        ('TEXTCOLOR', (0,0), (-1,-1), colors.white),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTSIZE', (0,0), (-1,-1), 12),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+    ]))
+    story.append(score_table)
+    story.append(Spacer(1, 12))
 
-    # Insertion du graphique
+    # Graphique
+    fig, ax = plt.subplots()
+    ax.bar(["Conformité", "Manquants"], [score, max_score-score])
+    ax.set_ylim(0, max_score)
     with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as img:
-        chart_fig.savefig(img.name, bbox_inches='tight')
-        c.drawImage(img.name, 2*cm, height-12*cm, width=12*cm, preserveAspectRatio=True)
-
-    y = height-13*cm
+        fig.savefig(img.name, bbox_inches='tight')
+        story.append(Image(img.name, width=16*cm, height=9*cm))
+    story.append(Spacer(1, 12))
 
     # Sections par domaine
     for idx, domain in DOMAIN_MAP.items():
-        resp = responses[idx]
-        # Détermination de la criticité
+        resp = responses.get(idx, '')
+        crit_level = 'low' if resp == 'Oui' else ('high' if idx in [0,1,6,7] else 'medium')
+        color = CRITICALITY_COLORS[crit_level]
+
+        # Titre domaine
+        story.append(Paragraph(domain, styles['HeadingStyle']))
+        # Réponse
+        response_para = Paragraph(
+            f"<b>Réponse:</b> {resp}",
+            ParagraphStyle('RespStyle', parent=styles['BodyText'], backColor=color, fontSize=11, leading=13, spaceAfter=6, leftIndent=6)
+        )
+        story.append(response_para)
+
+        # Recommandation et lien
         if resp == 'Non':
-            crit = 'high' if idx in [0,1,6,7] else 'medium'
-        else:
-            crit = 'low'
-        color = CRITICALITY_COLORS[crit]
+            link_info = links_detail.get(idx)
+            if link_info:
+                url, citation = link_info
+                story.append(Paragraph(f"<link href='{url}'>En savoir plus sur le site CNIL</link>", styles['LinkStyle']))
+                story.append(Paragraph(citation, styles['CitationStyle']))
 
-        # Section domaine
-        c.setFont("Helvetica-Bold", 14)
-        c.setFillColor(colors.HexColor('#003366'))
-        c.drawString(2*cm, y, domain)
-        y -= 0.7*cm
+        # Tip
+        tip_text = tips.get(idx)
+        if tip_text:
+            story.append(Paragraph(f"<b>Tip:</b> {tip_text}", styles['TipStyle']))
 
-        # Réponse et highlight
-        c.setFont("Helvetica", 11)
-        c.setFillColor(color)
-        c.drawString(3*cm, y, f"Réponse: {resp}")
-        y -= 0.7*cm
-
-        if resp == 'Non':
-            # Bouton recommandation
-            c.setFillColor(colors.HexColor('#005599'))
-            c.rect(3*cm, y-0.2*cm, 12*cm, 0.8*cm, fill=1)
-            c.setFillColor(colors.white)
-            c.setFont("Helvetica-Bold", 10)
-            c.drawString(3.2*cm, y, "En savoir plus")
-            # Lien URL et citation
-            url, citation = links_detail.get(idx, (None, None))
-            if url:
-                c.linkURL(url, (3*cm, y-0.2*cm, 15*cm, y+0.6*cm))
-            y -= 1*cm
-            if citation:
-                c.setFont("Helvetica-Oblique", 9)
-                c.setFillColor(colors.black)
-                c.drawString(3.2*cm, y, citation)
-                y -= 0.7*cm
-
-        # Encadré Tip
-        tip = tips.get(idx)
-        if tip:
-            c.setFillColor(colors.HexColor('#f2f9ff'))
-            c.rect(2*cm, y-0.2*cm, 16*cm, 1*cm, fill=1)
-            c.setFillColor(colors.black)
-            c.setFont("Helvetica", 9)
-            c.drawString(2.2*cm, y, tip)
-            y -= 1.2*cm
-
-        # Nouvelle page si nécessaire
-        if y < 4*cm:
-            c.showPage()
-            y = height-2*cm
+        story.append(Spacer(1, 12))
+        story.append(PageBreak())
 
     # Conclusion
-    c.setFont("Helvetica-Bold", 14)
-    c.setFillColor(colors.HexColor('#003366'))
-    c.drawString(2*cm, y, "Conclusion et ressources complémentaires")
-    y -= 0.7*cm
-    c.setFont("Helvetica", 10)
-    c.setFillColor(colors.black)
-    text = c.beginText(2*cm, y)
-    text.textLines(conclusion)
-    c.drawText(text)
+    story.append(Paragraph("Conclusion et ressources complémentaires", styles['HeadingStyle']))
+    story.append(Paragraph(conclusion, styles['NormalStyle']))
 
-    c.save()
+    doc.build(story)
     buffer.seek(0)
     return buffer

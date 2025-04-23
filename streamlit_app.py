@@ -107,5 +107,5 @@ if st.button("Générer le rapport PDF"):
     recs = {i: f"Mettre en place: {QUESTIONS[i]}" for i,v in responses.items() if v=="Non"}
     tips = {0: "Limitez la collecte aux données strictement nécessaires.", 1: "Rédigez un texte clair et précis, facilement accessible.", 2: "Tenez à jour votre registre des traitements.", 3: "Nommer un DPO interne ou externe dès maintenant.", 4: "Assurez-vous de localiser les données dans un environnement protégé.", 5: "Réalisez systématiquement une DPIA pour les traitements sensibles.", 6: "Préparez un protocole de réponse aux incidents.", 7: "Utilisez des cases explicites et granuleuses.", 8: "Revoyez vos durées de conservation pour éviter l’excès.", 9: "Organisez des sessions de formation régulières."}
     conclusion = "Votre audit révèle à la fois des points forts à consolider et des marges de progression ciblées. En structurant votre plan d’action autour de ces points et en instaurant une culture RGPD interne, vous sécuriserez vos traitements et renforcerez la confiance de vos parties prenantes."
-    pdf = generate_pdf(responses, score, max_score, recs, tips, tips, conclusion)
+    pdf = generate_pdf(responses, score, max_score, recs, tips, conclusion)
     st.download_button("Télécharger le rapport PDF", data=pdf, file_name="rapport_rgpd.pdf", mime="application/pdf")

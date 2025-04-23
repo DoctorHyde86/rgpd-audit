@@ -51,7 +51,7 @@ CRITICALITY_COLORS = {
     'low': colors.green,
 }
 
-def generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion):(responses, score, max_score, recommendations, links_detail, tips, conclusion):
+def generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
     story = []

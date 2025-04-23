@@ -30,6 +30,20 @@ DOMAIN_MAP = {
     9: "Formation des salariés",
 }
 
+# Texte des questions
+QUESTIONS = [
+    "Collectez-vous des données personnelles de vos clients ?",
+    "Avez-vous mis à disposition une politique de confidentialité claire sur votre site ?",
+    "Conservez-vous un registre des traitements de données ?",
+    "Avez-vous désigné un DPO (Délégué à la protection des données) ?",
+    "Les données sont-elles stockées dans l’UE ou dans un pays avec un niveau de protection adéquat ?",
+    "Utilisez-vous des outils tiers (CRM, newsletter, analytics) ? Lesquels ?",
+    "Avez-vous mis en place un processus en cas de fuite de données ?",
+    "Vos formulaires incluent-ils une case à cocher pour consentement explicite ?",
+    "Conservez-vous les données plus de 3 ans sans action de l'utilisateur ?",
+    "Avez-vous informé vos salariés de leurs droits en matière de données ?",
+]
+
 # Couleurs de criticité
 CRITICALITY_COLORS = {
     'high': colors.red,
@@ -37,7 +51,7 @@ CRITICALITY_COLORS = {
     'low': colors.green,
 }
 
-def generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion):
+def generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion):(responses, score, max_score, recommendations, links_detail, tips, conclusion):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
     story = []

@@ -26,71 +26,76 @@ QUESTIONS = [
 # PDF generation function inlined
 styles = getSampleStyleSheet()
 styles.add(ParagraphStyle(name='PDFTitle', parent=styles['Title'], fontSize=22, textColor=colors.HexColor('#2C3E50'), spaceAfter=16))
-styles.add(ParagraphStyle(name='IntroText', parent=styles['BodyText'], fontSize=9, textColor=colors.HexColor('#7F8C8D'), spaceAfter=12))
-styles.add(ParagraphStyle(name='SectionHeading', parent=styles['Heading2'], fontSize=10, textColor=colors.HexColor('#34495E'), spaceBefore=8, spaceAfter=4))
-styles.add(ParagraphStyle(name='NormalText', parent=styles['BodyText'], fontSize=8.5, leading=11))
-styles.add(ParagraphStyle(name='TipBox', parent=styles['BodyText'], backColor=colors.HexColor('#FDFEFE'), borderPadding=6, fontSize=8, leading=10, spaceBefore=4, spaceAfter=4))
-styles.add(ParagraphStyle(name='LinkText', parent=styles['BodyText'], textColor=colors.HexColor('#2980B9'), fontSize=8, spaceBefore=2, spaceAfter=2))
-styles.add(ParagraphStyle(name='CitationText', parent=styles['BodyText'], fontSize=7.5, fontName='Helvetica-Oblique', leading=9, spaceBefore=2, spaceAfter=4))
-CRIT_COLORS = {True: '#FADBD8', False: '#D5F5E3'}
+styles.add(ParagraphStyle(name='SectionBox', parent=styles['BodyText'], fontSize=10, backColor=colors.white, leftIndent=6, rightIndent=6, spaceBefore=6, spaceAfter=6))
+styles.add(ParagraphStyle(name='Question', parent=styles['Heading2'], fontSize=11, textColor=colors.HexColor('#2C3E50'), spaceAfter=4))
+styles.add(ParagraphStyle(name='Response', parent=styles['BodyText'], fontSize=9, spaceAfter=4))
+styles.add(ParagraphStyle(name='CommentOK', parent=styles['BodyText'], backColor=colors.HexColor('#D5F5E3'), fontSize=8, spaceAfter=4, borderPadding=4))
+styles.add(ParagraphStyle(name='CommentKO', parent=styles['BodyText'], backColor=colors.HexColor('#FADBD8'), fontSize=8, spaceAfter=4, borderPadding=4))
+styles.add(ParagraphStyle(name='Law', parent=styles['BodyText'], fontSize=7.5, fontName='Helvetica-Oblique', textColor=colors.HexColor('#7F8C8D'), spaceAfter=4))
+styles.add(ParagraphStyle(name='Criticity', parent=styles['BodyText'], fontSize=7.5, textColor=colors.HexColor('#C0392B'), spaceAfter=4))
+styles.add(ParagraphStyle(name='Conclusion', parent=styles['BodyText'], fontSize=9, leading=12, spaceBefore=12))
 
+# Criticality ratings
+CRIT_LEVEL = {0: '10/10', 1: '9/10', 2: '8/10', 3: '7/10', 4: '6/10', 5: '5/10', 6: '7/10', 7: '9/10', 8: '6/10', 9: '8/10'}
+
+# Law citations
+LAW_TEXT = {
+    0: "Article 5 RGPD – Principes relatifs au traitement des données.",
+    1: "Article 12 RGPD – Transparence des informations.",
+    3: "Article 37 RGPD – Désignation du DPO.",
+    6: "Article 33 RGPD – Notification des violations de données.",
+}
 
 def generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                            leftMargin=1*cm, rightMargin=1*cm,
+                            topMargin=1*cm, bottomMargin=1*cm)
     story = []
     # Title
     story.append(Paragraph("Rapport d'Audit de Conformité RGPD", styles['PDFTitle']))
-
-    # Intro
-    intro = ("Ce rapport synthétise votre niveau de conformité RGPD. "
-             "Vous retrouvez vos points forts, les lacunes critiques et nos recommandations.")
-    story.append(Paragraph(intro, styles['IntroText']))
-
-    # Metrics and chart side by side
-    metrics = Paragraph(
-        "<b>Metrics clés 2024 (Europe):</b><br/>"
-        "- 2 086 sanctions prononcées pour 4,48 Md€ au total.<br/>"
-        "- 33 % de baisse des amendes en 2024 (1,2 Md€) par rapport à 2023.<br/>"
-        "- 48 % des entreprises formalisent un processus de gestion des fuites.",
-        styles['NormalText']
-    )
-    # Generate chart image
-    fig, ax = plt.subplots(figsize=(3.5, 1.5));
+    story.append(Spacer(1, 8))
+    # Score chart
+    fig, ax = plt.subplots(figsize=(3, 1.2))
     ax.bar(['OK','Manquants'], [score, max_score-score], color=['#27AE60','#C0392B']);
     ax.set_ylim(0, max_score); ax.tick_params(labelsize=8)
-    buf = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
-    fig.savefig(buf.name, bbox_inches='tight', dpi=300)
-    chart = Image(buf.name, width=8*cm, height=4*cm)
-    table = Table([[metrics, chart]], colWidths=[7*cm, 8*cm])
-    table.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'TOP')]))
-    story.append(table)
+    img_buf = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+    fig.savefig(img_buf.name, bbox_inches='tight', dpi=300)
+    story.append(Image(img_buf.name, width=8*cm, height=3*cm))
     story.append(Spacer(1, 12))
-
-    # Sections
+    # Sections with frames
     for idx, question in enumerate(QUESTIONS):
+        # Container table
+        data = []
         resp = responses.get(idx, '')
-        bg = CRIT_COLORS[resp=='Non']
-        story.append(Paragraph(question, styles['SectionHeading']))
-        resp_style = ParagraphStyle(
-            name=f"Resp{idx}", parent=styles['BodyText'],
-            backColor=colors.HexColor(bg), fontSize=8, leading=10,
-            leftIndent=6, spaceAfter=4
-        )
-        story.append(Paragraph(f"<b>Réponse:</b> {resp}", resp_style))
-        if resp=='Non':
-            if idx in recommendations: story.append(Paragraph(recommendations[idx], styles['NormalText']))
-            if idx in links_detail:
-                url, cit = links_detail[idx]
-                story.append(Paragraph(f"<link href='{url}'>Voir documentation CNIL</link>", styles['LinkText']))
-                story.append(Paragraph(cit, styles['CitationText']))
-        if idx in tips: story.append(Paragraph(f"<b>Tip:</b> {tips[idx]}", styles['TipBox']))
-        story.append(Spacer(1, 6))
-
-    # Conclusion
-    story.append(Paragraph("Conclusion", styles['SectionHeading']))
-    story.append(Paragraph(conclusion, styles['NormalText']))
-
+        # Question
+        data.append([Paragraph(question, styles['Question'])])
+        # Response
+        data.append([Paragraph(f"<b>Réponse:</b> {resp}", styles['Response'])])
+        # Comment\        if resp == 'Oui':
+            comment = tips.get(idx, "Vous êtes en conformité. Conseil: continuez à maintenir vos bonnes pratiques et reconsidérez annuellement vos processus.")
+            style = styles['CommentOK']
+            data.append([Paragraph(f"<b>Positif:</b> {comment}", style)])
+        else:
+            comm = recommendations.get(idx, "Non conforme, renforcer ce point dès que possible.")
+            law = LAW_TEXT.get(idx, "Article 6 RGPD – Licéité du traitement.")
+            crit = CRIT_LEVEL.get(idx, '5/10')
+            style = styles['CommentKO']
+            data.append([Paragraph(f"<b>Importance:</b> Renforcer cette pratique. {comm}", style)])
+            data.append([Paragraph(law, styles['Law'])])
+            data.append([Paragraph(f"Criticité: {crit}", styles['Criticity'])])
+        tbl = Table(data, colWidths=[18*cm])
+        tbl.setStyle(TableStyle([
+            ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#BDC3C7')),
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#ECF0F1')),
+            ('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),
+            ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),
+        ]))
+        story.append(tbl)
+        story.append(Spacer(1, 8))
+    # Conclusion extended
+    story.append(Paragraph("Conclusion approfondie", styles['SectionHeading']))
+    story.append(Paragraph(conclusion + " Cette analyse met en lumière vos axes d'amélioration prioritaires. Il est recommandé de mettre en place un plan d'action structuré, impliquant à la fois la gouvernance, la technique et la formation continue. N'oubliez pas de documenter chaque processus et de revoir votre conformité au moins une fois par an. Pour aller plus loin, explorez les ressources CNIL, les guides sectoriels et envisagez l'accompagnement d'un expert RGPD.", styles['Conclusion']))
     doc.build(story)
     buffer.seek(0)
     return buffer
@@ -103,6 +108,6 @@ if st.button("Générer le rapport PDF"):
     recs = {i: f"Mettre en place: {QUESTIONS[i]}" for i,v in responses.items() if v=="Non"}
     links = {0:("https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre2#article6","« Le traitement n'est licite que si... »"), 3:("https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre4#article37","« Article 37 – Désignation du DPO. »")}
     tips = {0:"Limitez la collecte aux données strictement nécessaires.", 7:"Privilégiez le consentement granulaire."}
-    conclusion = "Pour aller plus loin, consultez la CNIL et planifiez une revue annuelle."
+    conclusion = "Pour aller plus loin, consultez la CNIL et établissez un plan RGPD robuste, associant gouvernance, processus et formation continue."
     pdf = generate_pdf(responses, score, max_score, recs, links, tips, conclusion)
     st.download_button("Télécharger le rapport PDF", data=pdf, file_name="rapport_rgpd.pdf", mime="application/pdf")

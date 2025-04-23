@@ -7,8 +7,7 @@ import matplotlib.pyplot as plt
 import io
 import tempfile
 
-# Questionnaire
-QUESTIONS = [
+# Questionnaire\ nQUESTIONS = [
     "Collectez-vous des données personnelles de vos clients ?",
     "Avez-vous mis à disposition une politique de confidentialité claire sur votre site ?",
     "Conservez-vous un registre des traitements de données ?",
@@ -52,19 +51,9 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
         "Vous retrouvez vos points forts, les lacunes critiques et nos recommandations."
     )
     metrics = (
-        "Metrics clés 2024 (Europe):
-"
-        "- 2 086 sanctions prononcées, totalisant 4,48 Md€ de montant de sanctions.
-"
-        "- 33% de baisse des amendes en 2024 (1,2 Md€) par rapport à 2023.
-"
-        "- 48% des entreprises déclarent un processus de gestion des fuites formalisé."
-    ):
-"
-        "- 2 086 sanctions prononcées, totalisant 4,48 Md€ de montant de sanctions.
-"
-        "- 33% de baisse des amendes en 2024 (1,2 Md€) par rapport à 2023.
-"
+        "Metrics clés 2024 (Europe):\n"
+        "- 2 086 sanctions prononcées, totalisant 4,48 Md€ de montant de sanctions.\n"
+        "- 33% de baisse des amendes en 2024 (1,2 Md€) par rapport à 2023.\n"
         "- 48% des entreprises déclarent un processus de gestion des fuites formalisé."
     )
     story.append(Paragraph(intro, styles['NormalText']))

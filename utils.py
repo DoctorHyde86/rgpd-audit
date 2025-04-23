@@ -33,8 +33,8 @@ styles.add(ParagraphStyle(name='CitationText', parent=styles['BodyText'], fontSi
 
 # Colors for non/ok
 CRIT_COLORS = {
-    True: '#FDEDEC',
-    False: '#E8F8F5',
+    True: '#FDEDEC',   # non-conform
+    False: '#E8F8F5',  # conform
 }
 
 def generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion):
@@ -81,7 +81,10 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
         resp = responses.get(idx, '')
         color_hex = CRIT_COLORS[resp == 'Non']
 
+        # Section heading
         story.append(Paragraph(question, styles['SectionHeading']))
+        
+        # Response box
         resp_style = ParagraphStyle(
             name=f"RespStyle{idx}", parent=styles['BodyText'],
             backColor=colors.HexColor(color_hex), fontSize=8, leading=10,
@@ -102,6 +105,7 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
 
         story.append(Spacer(1, 8))
 
+    # Conclusion
     story.append(Paragraph("Conclusion", styles['SectionHeading']))
     story.append(Paragraph(conclusion, styles['NormalText']))
 

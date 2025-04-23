@@ -1,6 +1,4 @@
 import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
 from utils import generate_pdf
 
 # Questions et domaines (ordre synchronisé avec utils.DOMAIN_MAP)
@@ -29,16 +27,19 @@ for i, q in enumerate(QUESTIONS):
 
 if st.button("Générer le rapport PDF"):
     # Score
-    max_score = sum(1 for i in range(10) if i != 5)
-    score = sum(1 for i, ans in responses.items() if i != 5 and ans == "Oui")
+    max_score = sum(1 for idx in range(len(QUESTIONS)) if idx != 5)
+    score = sum(1 for idx, ans in responses.items() if idx != 5 and ans == "Oui")
 
     # Recommandations et liens légaux
-    recommendations = {i: f"Mettre en place: {QUESTIONS[i]}" for i in range(10) if i != 5 and responses[i] == "Non"}
+    recommendations = {
+        idx: f"Mettre en place: {QUESTIONS[idx]}"
+        for idx in range(len(QUESTIONS)) if idx != 5 and responses[idx] == "Non"
+    }
     links_detail = {
         0: ("https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre2#article6",
-            "« Le traitement n'est licite que si... » (Article 6 RGPD)"),
+            "« Le traitement n'est licite que si... » (Article 6 RGPD)"),
         3: ("https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre4#article37",
-            "« Article 37 – Désignation du DPO. »"),
+            "« Article 37 – Désignation du DPO. »"),
     }
 
     # Tips par domaine
@@ -47,11 +48,6 @@ if st.button("Générer le rapport PDF"):
         7: "Privilégiez le consentement granulaire et documentez chaque choix de l'utilisateur.",
     }
 
-    # Graphique
-    fig, ax = plt.subplots()
-    ax.bar(["Conformité", "Manquants"], [score, max_score-score])
-    ax.set_ylim(0, max_score)
-
     # Conclusion
     conclusion = (
         "Pour aller plus loin, consultez les ressources CNIL et prévoyez une revue annuelle. "
@@ -59,7 +55,7 @@ if st.button("Générer le rapport PDF"):
     )
 
     # Génération PDF
-    pdf = generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion, fig)
+    pdf = generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion)
     st.download_button(
         label="Télécharger le rapport PDF",
         data=pdf,

@@ -1,4 +1,4 @@
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
@@ -54,11 +54,17 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
 
     # Score and chart
     story.append(Paragraph(f"<b>Score de conformité:</b> {score}/{max_score}", styles['NormalText']))
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(6, 3))
     ax.bar(['Conformité', 'Manquants'], [score, max_score - score])
     ax.set_ylim(0, max_score)
+    ax.set_ylabel('Nombre de points')
+    ax.set_xlabel('Catégorie')
+    for tick in ax.get_xticklabels():
+        tick.set_fontsize(10)
+    for tick in ax.get_yticklabels():
+        tick.set_fontsize(10)
     with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as img:
-        fig.savefig(img.name, bbox_inches='tight')
+        fig.savefig(img.name, bbox_inches='tight', dpi=300)
         story.append(Image(img.name, width=16*cm, height=9*cm))
     story.append(Spacer(1, 12))
 
@@ -90,7 +96,6 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
             story.append(Paragraph(f"<b>Tip:</b> {tips[idx]}", styles['TipBox']))
 
         story.append(Spacer(1, 12))
-        story.append(PageBreak())
 
     # Conclusion
     story.append(Paragraph("Conclusion", styles['SectionHeading']))

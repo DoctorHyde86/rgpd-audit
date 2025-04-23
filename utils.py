@@ -59,6 +59,13 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
         "- 33% de baisse des amendes en 2024 (1,2 Md€) par rapport à 2023.
 "
         "- 48% des entreprises déclarent un processus de gestion des fuites formalisé."
+    ):
+"
+        "- 2 086 sanctions prononcées, totalisant 4,48 Md€ de montant de sanctions.
+"
+        "- 33% de baisse des amendes en 2024 (1,2 Md€) par rapport à 2023.
+"
+        "- 48% des entreprises déclarent un processus de gestion des fuites formalisé."
     )
     story.append(Paragraph(intro, styles['NormalText']))
     story.append(Paragraph(metrics, styles['IntroMetrics']))

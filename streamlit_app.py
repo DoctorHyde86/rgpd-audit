@@ -39,7 +39,6 @@ if st.button("Générer le rapport PDF"):
             "« Le traitement n'est licite que si... » (Article 6 RGPD)"),
         3: ("https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre4#article37",
             "« Article 37 – Désignation du DPO. »"),
-        # Autres: renvoi vers guide CNIL général
     }
 
     # Tips par domaine

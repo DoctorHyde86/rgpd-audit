@@ -72,7 +72,8 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
         data.append([Paragraph(question, styles['Question'])])
         # Response
         data.append([Paragraph(f"<b>Réponse:</b> {resp}", styles['Response'])])
-        # Comment\        if resp == 'Oui':
+        # Comment
+        if resp == 'Oui':
             comment = tips.get(idx, "Vous êtes en conformité. Conseil: continuez à maintenir vos bonnes pratiques et reconsidérez annuellement vos processus.")
             style = styles['CommentOK']
             data.append([Paragraph(f"<b>Positif:</b> {comment}", style)])
@@ -84,6 +85,7 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
             data.append([Paragraph(f"<b>Importance:</b> Renforcer cette pratique. {comm}", style)])
             data.append([Paragraph(law, styles['Law'])])
             data.append([Paragraph(f"Criticité: {crit}", styles['Criticity'])])
+        
         tbl = Table(data, colWidths=[18*cm])
         tbl.setStyle(TableStyle([
             ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#BDC3C7')),
@@ -92,6 +94,7 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
             ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),
         ]))
         story.append(tbl)
+        story.append(Spacer(1, 8))
         story.append(Spacer(1, 8))
     # Conclusion extended
     story.append(Paragraph("Conclusion approfondie", styles['SectionHeading']))

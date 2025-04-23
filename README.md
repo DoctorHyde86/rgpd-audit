@@ -1,20 +1,15 @@
+"""
 # GDPR Audit Tool (TPE/PME)
 
-This is a Streamlit application for conducting a GDPR compliance audit for small and medium-sized businesses. Users answer a series of questions and receive a synthesized PDF report, highlighting compliance points, gaps, recommendations, resource links, and a visual compliance score.
-
-## Features
-- Interactive questionnaire (10 core questions)
-- Dynamic compliance scoring
-- PDF report generation (free version watermark / paid version clean)
-- Visual chart of compliance level
-
-## Requirements
-See `requirements.txt`.
+Cette application Streamlit permet d’effectuer un audit de conformité RGPD pour les TPE/PME. Les utilisateurs répondent à une série de questions et reçoivent un rapport PDF stylé, intégrant :
+- Un score de conformité
+- Un graphique visuel intégré
+- Des sections par domaine RGPD avec code couleur
+- Des recommandations avec liens vers CNIL et citations légales
+- Des encadrés de best practices
+- Introduction et conclusion enrichies
 
 ## Usage
-1. Install dependencies: `pip install -r requirements.txt`
-2. Run the app: `streamlit run streamlit_app.py`
-3. Follow the on-screen questionnaire.
-
-## Deployment
-Deploy via Streamlit Cloud or any platform supporting Streamlit.
+1. Installer les dépendances : `pip install -r requirements.txt`
+2. Lancer l’application : `streamlit run streamlit_app.py`
+"""

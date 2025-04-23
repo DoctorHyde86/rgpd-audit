@@ -1,4 +1,4 @@
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, PageBreak
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
@@ -7,30 +7,7 @@ import matplotlib.pyplot as plt
 import io
 import tempfile
 
-# Styles
-styles = getSampleStyleSheet()
-styles.add(ParagraphStyle(name='PDFTitle', parent=styles['Heading1'], fontSize=18, textColor=colors.HexColor('#003366'), spaceAfter=12))
-styles.add(ParagraphStyle(name='SectionHeading', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#003366'), spaceBefore=12, spaceAfter=6))
-styles.add(ParagraphStyle(name='NormalText', parent=styles['BodyText'], fontSize=10, leading=12))
-styles.add(ParagraphStyle(name='TipBox', parent=styles['BodyText'], backColor=colors.HexColor('#f2f9ff'), borderPadding=6, fontSize=9, leading=11, spaceBefore=6, spaceAfter=6))
-styles.add(ParagraphStyle(name='LinkText', parent=styles['BodyText'], textColor=colors.HexColor('#005599'), fontSize=10, spaceBefore=4, spaceAfter=4))
-styles.add(ParagraphStyle(name='CitationText', parent=styles['BodyText'], fontSize=9, fontName='Helvetica-Oblique', leading=11, spaceBefore=2, spaceAfter=4))
-
-# Map des domaines RGPD
-DOMAIN_MAP = {
-    0: "Collecte de données",
-    1: "Politique de confidentialité",
-    2: "Registre des traitements",
-    3: "DPO",
-    4: "Stockage des données",
-    5: "Outils tiers",
-    6: "Processus de fuite",
-    7: "Consentement explicite",
-    8: "Rétention des données",
-    9: "Formation des salariés",
-}
-
-# Texte des questions
+# Questionnaire
 QUESTIONS = [
     "Collectez-vous des données personnelles de vos clients ?",
     "Avez-vous mis à disposition une politique de confidentialité claire sur votre site ?",
@@ -44,19 +21,29 @@ QUESTIONS = [
     "Avez-vous informé vos salariés de leurs droits en matière de données ?",
 ]
 
-# Couleurs de criticité
-CRITICALITY_COLORS = {
-    'high': colors.red,
-    'medium': colors.orange,
-    'low': colors.green,
+# Styles
+styles = getSampleStyleSheet()
+styles.add(ParagraphStyle(name='PDFTitle', parent=styles['Title'], fontSize=18, textColor=colors.HexColor('#003366'), spaceAfter=12))
+styles.add(ParagraphStyle(name='SectionHeading', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#003366'), spaceBefore=12, spaceAfter=6))
+styles.add(ParagraphStyle(name='NormalText', parent=styles['BodyText'], fontSize=10, leading=12))
+styles.add(ParagraphStyle(name='TipBox', parent=styles['BodyText'], backColor=colors.HexColor('#f2f9ff'), borderPadding=6, fontSize=9, leading=11, spaceBefore=6, spaceAfter=6))
+styles.add(ParagraphStyle(name='LinkText', parent=styles['BodyText'], textColor=colors.HexColor('#005599'), fontSize=10, spaceBefore=4, spaceAfter=4))
+styles.add(ParagraphStyle(name='CitationText', parent=styles['BodyText'], fontSize=9, fontName='Helvetica-Oblique', leading=11, spaceBefore=2, spaceAfter=4))
+
+# Colors for non/ok
+CRIT_COLORS = {
+    True: '#FFCCCC',   # non-conform
+    False: '#CCFFCC',  # conform
 }
 
 def generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=2*cm, rightMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+    doc = SimpleDocTemplate(buffer, pagesize=A4,
+                            leftMargin=2*cm, rightMargin=2*cm,
+                            topMargin=2*cm, bottomMargin=2*cm)
     story = []
 
-    # Introduction
+    # Title and intro
     story.append(Paragraph("Rapport d'Audit de Conformité RGPD", styles['PDFTitle']))
     intro = (
         "Ce rapport synthétise votre niveau de conformité RGPD. "
@@ -75,16 +62,22 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
         story.append(Image(img.name, width=16*cm, height=9*cm))
     story.append(Spacer(1, 12))
 
-    # Sections
-    for idx, question in enumerate(responses.keys()):
-        resp = responses[idx]
-        color_hex = '#FFCCCC' if resp == 'Non' else '#CCFFCC'
+    # Sections for each question
+    for idx, question in enumerate(QUESTIONS):
+        resp = responses.get(idx, '')
+        color_hex = CRIT_COLORS[resp == 'Non']
+
+        # Section heading
         story.append(Paragraph(question, styles['SectionHeading']))
+        
         # Response box
-        story.append(Paragraph(
-            f"<b>Réponse:</b> {resp}",
-            ParagraphStyle('RespBox', parent=styles['BodyText'], backColor=colors.HexColor(color_hex), fontSize=10, leading=12, spaceAfter=6, leftIndent=6)
-        ))
+        resp_style = ParagraphStyle(
+            name=f"RespStyle{idx}", parent=styles['BodyText'],
+            backColor=colors.HexColor(color_hex), fontSize=10, leading=12,
+            spaceAfter=6, leftIndent=6
+        )
+        story.append(Paragraph(f"<b>Réponse:</b> {resp}", resp_style))
+
         if resp == 'Non':
             if idx in recommendations:
                 story.append(Paragraph(recommendations[idx], styles['NormalText']))
@@ -92,9 +85,12 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
                 url, citation = links_detail[idx]
                 story.append(Paragraph(f"<link href='{url}'>Voir documentation CNIL</link>", styles['LinkText']))
                 story.append(Paragraph(citation, styles['CitationText']))
+
         if idx in tips:
             story.append(Paragraph(f"<b>Tip:</b> {tips[idx]}", styles['TipBox']))
+
         story.append(Spacer(1, 12))
+        story.append(PageBreak())
 
     # Conclusion
     story.append(Paragraph("Conclusion", styles['SectionHeading']))

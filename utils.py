@@ -14,7 +14,7 @@ QUESTIONS = [
     "Conservez-vous un registre des traitements de données ?",
     "Avez-vous désigné un DPO (Délégué à la protection des données) ?",
     "Les données sont-elles stockées dans l’UE ou dans un pays avec un niveau de protection adéquat ?",
-    "Utilisez-vous des outils tiers (CRM, newsletter, analytics) ? Lesquels ?",
+    "Avez-vous réalisé une Analyse d'Impact relative à la Protection des Données (DPIA) ?",
     "Avez-vous mis en place un processus en cas de fuite de données ?",
     "Vos formulaires incluent-ils une case à cocher pour consentement explicite ?",
     "Conservez-vous les données plus de 3 ans sans action de l'utilisateur ?",
@@ -23,17 +23,18 @@ QUESTIONS = [
 
 # Styles
 styles = getSampleStyleSheet()
-styles.add(ParagraphStyle(name='PDFTitle', parent=styles['Title'], fontSize=18, textColor=colors.HexColor('#003366'), spaceAfter=12))
-styles.add(ParagraphStyle(name='SectionHeading', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#003366'), spaceBefore=12, spaceAfter=6))
-styles.add(ParagraphStyle(name='NormalText', parent=styles['BodyText'], fontSize=10, leading=12))
-styles.add(ParagraphStyle(name='TipBox', parent=styles['BodyText'], backColor=colors.HexColor('#f2f9ff'), borderPadding=6, fontSize=9, leading=11, spaceBefore=6, spaceAfter=6))
-styles.add(ParagraphStyle(name='LinkText', parent=styles['BodyText'], textColor=colors.HexColor('#005599'), fontSize=10, spaceBefore=4, spaceAfter=4))
-styles.add(ParagraphStyle(name='CitationText', parent=styles['BodyText'], fontSize=9, fontName='Helvetica-Oblique', leading=11, spaceBefore=2, spaceAfter=4))
+styles.add(ParagraphStyle(name='PDFTitle', parent=styles['Title'], fontSize=20, textColor=colors.HexColor('#2C3E50'), spaceAfter=14))
+styles.add(ParagraphStyle(name='IntroMetrics', parent=styles['BodyText'], fontSize=9, textColor=colors.HexColor('#7F8C8D'), spaceAfter=12))
+styles.add(ParagraphStyle(name='SectionHeading', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#34495E'), spaceBefore=10, spaceAfter=4))
+styles.add(ParagraphStyle(name='NormalText', parent=styles['BodyText'], fontSize=9, leading=11))
+styles.add(ParagraphStyle(name='TipBox', parent=styles['BodyText'], backColor=colors.HexColor('#ECF0F1'), borderPadding=6, fontSize=8, leading=10, spaceBefore=4, spaceAfter=4))
+styles.add(ParagraphStyle(name='LinkText', parent=styles['BodyText'], textColor=colors.HexColor('#2980B9'), fontSize=9, spaceBefore=2, spaceAfter=2))
+styles.add(ParagraphStyle(name='CitationText', parent=styles['BodyText'], fontSize=8, fontName='Helvetica-Oblique', leading=9, spaceBefore=2, spaceAfter=4))
 
 # Colors for non/ok
 CRIT_COLORS = {
-    True: '#FFCCCC',   # non-conform
-    False: '#CCFFCC',  # conform
+    True: '#FDEDEC',
+    False: '#E8F8F5',
 }
 
 def generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion):
@@ -43,29 +44,36 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
                             topMargin=2*cm, bottomMargin=2*cm)
     story = []
 
-    # Title and intro
+    # Title
     story.append(Paragraph("Rapport d'Audit de Conformité RGPD", styles['PDFTitle']))
+    # Intro and metrics
     intro = (
         "Ce rapport synthétise votre niveau de conformité RGPD. "
         "Vous retrouvez vos points forts, les lacunes critiques et nos recommandations."
     )
+    metrics = (
+        "Metrics clés 2024 (Europe):
+"
+        "- 2 086 sanctions prononcées, totalisant 4,48 Md€ de montant de sanctions.
+"
+        "- 33% de baisse des amendes en 2024 (1,2 Md€) par rapport à 2023.
+"
+        "- 48% des entreprises déclarent un processus de gestion des fuites formalisé."
+    )
     story.append(Paragraph(intro, styles['NormalText']))
-    story.append(Spacer(1, 12))
+    story.append(Paragraph(metrics, styles['IntroMetrics']))
+    story.append(Spacer(1, 8))
 
     # Score and chart
     story.append(Paragraph(f"<b>Score de conformité:</b> {score}/{max_score}", styles['NormalText']))
-    fig, ax = plt.subplots(figsize=(6, 3))
-    ax.bar(['Conformité', 'Manquants'], [score, max_score - score])
+    fig, ax = plt.subplots(figsize=(4, 2))
+    ax.bar(['Conformité', 'Manquants'], [score, max_score - score], color=['#27AE60', '#C0392B'])
     ax.set_ylim(0, max_score)
-    ax.set_ylabel('Nombre de points')
-    ax.set_xlabel('Catégorie')
-    for tick in ax.get_xticklabels():
-        tick.set_fontsize(10)
-    for tick in ax.get_yticklabels():
-        tick.set_fontsize(10)
+    ax.set_xticklabels(['Conformité', 'Manquants'], fontsize=8)
+    ax.set_yticklabels([str(int(t)) for t in ax.get_yticks()], fontsize=8)
     with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as img:
         fig.savefig(img.name, bbox_inches='tight', dpi=300)
-        story.append(Image(img.name, width=16*cm, height=9*cm))
+        story.append(Image(img.name, width=10*cm, height=5*cm))
     story.append(Spacer(1, 12))
 
     # Sections for each question
@@ -73,14 +81,11 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
         resp = responses.get(idx, '')
         color_hex = CRIT_COLORS[resp == 'Non']
 
-        # Section heading
         story.append(Paragraph(question, styles['SectionHeading']))
-        
-        # Response box
         resp_style = ParagraphStyle(
             name=f"RespStyle{idx}", parent=styles['BodyText'],
-            backColor=colors.HexColor(color_hex), fontSize=10, leading=12,
-            spaceAfter=6, leftIndent=6
+            backColor=colors.HexColor(color_hex), fontSize=8, leading=10,
+            spaceAfter=4, leftIndent=6
         )
         story.append(Paragraph(f"<b>Réponse:</b> {resp}", resp_style))
 
@@ -95,9 +100,8 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
         if idx in tips:
             story.append(Paragraph(f"<b>Tip:</b> {tips[idx]}", styles['TipBox']))
 
-        story.append(Spacer(1, 12))
+        story.append(Spacer(1, 8))
 
-    # Conclusion
     story.append(Paragraph("Conclusion", styles['SectionHeading']))
     story.append(Paragraph(conclusion, styles['NormalText']))
 

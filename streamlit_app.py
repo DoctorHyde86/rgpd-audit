@@ -1,6 +1,6 @@
 # File: streamlit_app.py
 import streamlit as st
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, Flowable)
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
@@ -8,6 +8,15 @@ from reportlab.lib.units import cm
 import matplotlib.pyplot as plt
 import io
 import tempfile
+
+# Custom Flowable for background watermark
+class Background(Flowable):
+    def __init__(self, img_path):
+        super().__init__()
+        self.img_path = img_path
+    def draw(self):
+        c = self.canv
+        c.drawImage(self.img_path, 0, 0, width=A4[0], height=A4[1], preserveAspectRatio=True, mask='auto')
 
 # Questionnaire definitions
 QUESTIONS = [
@@ -23,95 +32,80 @@ QUESTIONS = [
     "Avez-vous informé vos salariés de leurs droits en matière de données ?",
 ]
 
-# PDF generation function inlined
+# Styles and layout
 styles = getSampleStyleSheet()
-styles.add(ParagraphStyle(name='PDFTitle', parent=styles['Title'], fontSize=22, textColor=colors.HexColor('#2C3E50'), spaceAfter=16))
-styles.add(ParagraphStyle(name='SectionBox', parent=styles['BodyText'], fontSize=10, backColor=colors.white, leftIndent=6, rightIndent=6, spaceBefore=6, spaceAfter=6))
-styles.add(ParagraphStyle(name='Question', parent=styles['Heading2'], fontSize=11, textColor=colors.HexColor('#2C3E50'), spaceAfter=4))
-styles.add(ParagraphStyle(name='Response', parent=styles['BodyText'], fontSize=9, spaceAfter=4))
-styles.add(ParagraphStyle(name='CommentOK', parent=styles['BodyText'], backColor=colors.HexColor('#D5F5E3'), fontSize=8, spaceAfter=4, borderPadding=4))
-styles.add(ParagraphStyle(name='CommentKO', parent=styles['BodyText'], backColor=colors.HexColor('#FADBD8'), fontSize=8, spaceAfter=4, borderPadding=4))
+styles.add(ParagraphStyle(name='PDFTitle', parent=styles['Title'], fontSize=24, alignment=1, textColor=colors.HexColor('#1B2631'), spaceAfter=20))
+styles.add(ParagraphStyle(name='Intro', parent=styles['BodyText'], fontSize=10, textColor=colors.HexColor('#34495E'), spaceAfter=14))
+styles.add(ParagraphStyle(name='Question', parent=styles['Heading2'], fontSize=12, textColor=colors.white, backColor=colors.HexColor('#1B2631'), leftIndent=6, rightIndent=6, spaceAfter=6, spaceBefore=6))
+styles.add(ParagraphStyle(name='Response', parent=styles['BodyText'], fontSize=9, textColor=colors.HexColor('#2C3E50'), spaceAfter=6))
+styles.add(ParagraphStyle(name='CommentOK', parent=styles['BodyText'], backColor=colors.HexColor('#1F618D'), textColor=colors.white, fontSize=8, leftIndent=6, rightIndent=6, spaceAfter=6, spaceBefore=4))
+styles.add(ParagraphStyle(name='CommentKO', parent=styles['BodyText'], backColor=colors.HexColor('#922B21'), textColor=colors.white, fontSize=8, leftIndent=6, rightIndent=6, spaceAfter=6, spaceBefore=4))
 styles.add(ParagraphStyle(name='Law', parent=styles['BodyText'], fontSize=7.5, fontName='Helvetica-Oblique', textColor=colors.HexColor('#7F8C8D'), spaceAfter=4))
-styles.add(ParagraphStyle(name='Criticity', parent=styles['BodyText'], fontSize=7.5, textColor=colors.HexColor('#C0392B'), spaceAfter=4))
-styles.add(ParagraphStyle(name='SectionHeading', parent=styles['Heading2'], fontSize=12, textColor=colors.HexColor('#2C3E50'), spaceBefore=10, spaceAfter=6))
-styles.add(ParagraphStyle(name='Conclusion', parent=styles['BodyText'], fontSize=9, leading=12, spaceBefore=12))
+styles.add(ParagraphStyle(name='Criticity', parent=styles['BodyText'], fontSize=8, textColor=colors.HexColor('#C0392B'), spaceAfter=6))
+styles.add(ParagraphStyle(name='Conclusion', parent=styles['BodyText'], fontSize=10, textColor=colors.HexColor('#2C3E50'), spaceBefore=20, leading=14))
 
-# Criticality ratings
-CRIT_LEVEL = {0: '10/10', 1: '9/10', 2: '8/10', 3: '7/10', 4: '6/10', 5: '5/10', 6: '7/10', 7: '9/10', 8: '6/10', 9: '8/10'}
+CRIT_LEVEL = {i: f"{10-i}/10" for i in range(len(QUESTIONS))}
+LAW_TEXT = {0: "Article 5 RGPD – Principes relatifs au traitement des données.",
+            1: "Article 12 RGPD – Transparence des informations.",
+            3: "Article 37 RGPD – Désignation du DPO.",
+            6: "Article 33 RGPD – Notification des violations de données."}
 
-# Law citations
-LAW_TEXT = {
-    0: "Article 5 RGPD – Principes relatifs au traitement des données.",
-    1: "Article 12 RGPD – Transparence des informations.",
-    3: "Article 37 RGPD – Désignation du DPO.",
-    6: "Article 33 RGPD – Notification des violations de données.",
-}
-
-def generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion):
+# Generate PDF
+def generate_pdf(responses, score, max_score, recommendations, tips, conclusion):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4,
-                            leftMargin=1*cm, rightMargin=1*cm,
-                            topMargin=1*cm, bottomMargin=1*cm)
-    story = []
-    # Title
-    story.append(Paragraph("Rapport d'Audit de Conformité RGPD", styles['PDFTitle']))
-    story.append(Spacer(1, 8))
-    # Score chart
-    fig, ax = plt.subplots(figsize=(3, 1.2))
-    ax.bar(['OK','Manquants'], [score, max_score-score], color=['#27AE60','#C0392B']);
-    ax.set_ylim(0, max_score); ax.tick_params(labelsize=8)
-    img_buf = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
-    fig.savefig(img_buf.name, bbox_inches='tight', dpi=300)
-    story.append(Image(img_buf.name, width=8*cm, height=3*cm))
-    story.append(Spacer(1, 12))
-    # Sections with frames
+                            leftMargin=2.5*cm, rightMargin=2.5*cm,
+                            topMargin=2.5*cm, bottomMargin=2.5*cm)
+    flowables = []
+    # Background image
+    # Replace 'background.png' with actual path if needed
+    # flowables.append(Background('background.png'))
+    # Title and intro
+    flowables.append(Paragraph("Rapport d'Audit de Conformité RGPD", styles['PDFTitle']))
+    flowables.append(Paragraph("Ce rapport de conformité RGPD 2024 met en lumière votre position par rapport aux exigences légales européennes et propose des recommandations adaptées.", styles['Intro']))
+    # Chart
+    fig, ax = plt.subplots(figsize=(4,1.2))
+    ax.bar(['✔️','❌'], [score, max_score-score], color=['#1ABC9C','#E74C3C'])
+    ax.set_ylim(0, max_score)
+    ax.axis('off')
+    tmp = tempfile.NamedTemporaryFile(suffix='.png', delete=False)
+    fig.savefig(tmp.name, dpi=200, bbox_inches='tight')
+    flowables.append(Image(tmp.name, width=16*cm, height=4*cm))
+    flowables.append(Spacer(1,12))
+    # Sections
     for idx, question in enumerate(QUESTIONS):
-        # Container table
-        data = []
         resp = responses.get(idx, '')
-        # Question
-        data.append([Paragraph(question, styles['Question'])])
-        # Response
-        data.append([Paragraph(f"<b>Réponse:</b> {resp}", styles['Response'])])
-        # Comment
+        flowables.append(Paragraph(question, styles['Question']))
+        flowables.append(Paragraph(f"<b>Votre réponse:</b> {resp}", styles['Response']))
         if resp == 'Oui':
-            comment = tips.get(idx, "Vous êtes en conformité. Conseil: continuez à maintenir vos bonnes pratiques et reconsidérez annuellement vos processus.")
-            style = styles['CommentOK']
-            data.append([Paragraph(f"<b>Positif:</b> {comment}", style)])
+            crit = CRIT_LEVEL[idx]
+            # Personalized comment
+            comment = tips.get(idx, f"Vous remplissez bien cette exigence. Pour aller plus loin, envisagez une revue annuelle dédiée.")
+            flowables.append(Paragraph(f"{comment}", styles['CommentOK']))
+            flowables.append(Paragraph(f"Criticité: {crit}", styles['Criticity']))
         else:
-            comm = recommendations.get(idx, "Non conforme, renforcer ce point dès que possible.")
+            crit = CRIT_LEVEL[idx]
+            recomm = recommendations.get(idx, f"Il est essentiel de mettre en place cette pratique pour assurer la conformité.")
             law = LAW_TEXT.get(idx, "Article 6 RGPD – Licéité du traitement.")
-            crit = CRIT_LEVEL.get(idx, '5/10')
-            style = styles['CommentKO']
-            data.append([Paragraph(f"<b>Importance:</b> Renforcer cette pratique. {comm}", style)])
-            data.append([Paragraph(law, styles['Law'])])
-            data.append([Paragraph(f"Criticité: {crit}", styles['Criticity'])])
-        
-        tbl = Table(data, colWidths=[18*cm])
-        tbl.setStyle(TableStyle([
-            ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#BDC3C7')),
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#ECF0F1')),
-            ('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),
-            ('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4),
-        ]))
-        story.append(tbl)
-        story.append(Spacer(1, 8))
-        story.append(Spacer(1, 8))
-    # Conclusion extended
-    story.append(Paragraph("Conclusion approfondie", styles['SectionHeading']))
-    story.append(Paragraph(conclusion + " Cette analyse met en lumière vos axes d'amélioration prioritaires. Il est recommandé de mettre en place un plan d'action structuré, impliquant à la fois la gouvernance, la technique et la formation continue. N'oubliez pas de documenter chaque processus et de revoir votre conformité au moins une fois par an. Pour aller plus loin, explorez les ressources CNIL, les guides sectoriels et envisagez l'accompagnement d'un expert RGPD.", styles['Conclusion']))
-    doc.build(story)
+            flowables.append(Paragraph(f"{recomm}", styles['CommentKO']))
+            flowables.append(Paragraph(law, styles['Law']))
+            flowables.append(Paragraph(f"Criticité: {crit}", styles['Criticity']))
+        flowables.append(Spacer(1,10))
+    # Conclusion
+    flowables.append(Paragraph("Conclusion Approfondie", styles['Question']))
+    flowables.append(Paragraph(conclusion + " Dans l’optique d’une conformité durable, nous vous recommandons d’intégrer ces actions dans votre gouvernance, de documenter chaque processus et de sensibiliser régulièrement votre équipe. Un audit annuel permettra de mesurer les progrès et d’ajuster votre plan d’action.", styles['Conclusion']))
+    doc.build(flowables)
     buffer.seek(0)
     return buffer
 
 # Streamlit UI
 st.title("Outil d'Audit de Conformité RGPD")
-responses = {i: st.radio(q, ["Oui","Non"], key=i) for i, q in enumerate(QUESTIONS)}
+responses = {i: st.radio(q, ["Oui","Non"], key=i) for i,q in enumerate(QUESTIONS)}
 if st.button("Générer le rapport PDF"):
-    max_score, score = len(QUESTIONS), sum(v=="Oui" for v in responses.values())
+    max_score = len(QUESTIONS)
+    score = sum(v=="Oui" for v in responses.values())
     recs = {i: f"Mettre en place: {QUESTIONS[i]}" for i,v in responses.items() if v=="Non"}
-    links = {0:("https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre2#article6","« Le traitement n'est licite que si... »"), 3:("https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre4#article37","« Article 37 – Désignation du DPO. »")}
-    tips = {0:"Limitez la collecte aux données strictement nécessaires.", 7:"Privilégiez le consentement granulaire."}
-    conclusion = "Pour aller plus loin, consultez la CNIL et établissez un plan RGPD robuste, associant gouvernance, processus et formation continue."
-    pdf = generate_pdf(responses, score, max_score, recs, links, tips, conclusion)
+    tips = {0: "Limitez la collecte aux données strictement nécessaires.", 1: "Rédigez un texte clair et précis, facilement accessible.", 2: "Tenez à jour votre registre des traitements.", 3: "Nommer un DPO interne ou externe dès maintenant.", 4: "Assurez-vous de localiser les données dans un environnement protégé.", 5: "Réalisez systématiquement une DPIA pour les traitements sensibles.", 6: "Préparez un protocole de réponse aux incidents.", 7: "Utilisez des cases explicites et granuleuses.", 8: "Revoyez vos durées de conservation pour éviter l’excès.", 9: "Organisez des sessions de formation régulières."}
+    conclusion = "Votre audit révèle à la fois des points forts à consolider et des marges de progression ciblées. En structurant votre plan d’action autour de ces points et en instaurant une culture RGPD interne, vous sécuriserez vos traitements et renforcerez la confiance de vos parties prenantes."
+    pdf = generate_pdf(responses, score, max_score, recs, tips, tips, conclusion)
     st.download_button("Télécharger le rapport PDF", data=pdf, file_name="rapport_rgpd.pdf", mime="application/pdf")

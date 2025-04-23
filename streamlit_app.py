@@ -3,58 +3,67 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from utils import generate_pdf
 
-# Questionnaire definition
+# Questions et domaines (ordre synchronisé avec utils.DOMAIN_MAP)
 QUESTIONS = [
-    {"q": "Collectez-vous des données personnelles de vos clients ?", "type": "bool"},
-    {"q": "Avez-vous mis à disposition une politique de confidentialité claire sur votre site ?", "type": "bool"},
-    {"q": "Conservez-vous un registre des traitements de données ?", "type": "bool"},
-    {"q": "Avez-vous désigné un DPO (Délégué à la protection des données) ?", "type": "bool"},
-    {"q": "Les données sont-elles stockées dans l’UE ou dans un pays avec un niveau de protection adéquat ?", "type": "bool"},
-    {"q": "Utilisez-vous des outils tiers (CRM, newsletter, analytics) ? Lesquels ?", "type": "text"},
-    {"q": "Avez-vous mis en place un processus en cas de fuite de données ?", "type": "bool"},
-    {"q": "Vos formulaires incluent-ils une case à cocher pour consentement explicite ?", "type": "bool"},
-    {"q": "Conservez-vous les données plus de 3 ans sans action de l'utilisateur ?", "type": "bool"},
-    {"q": "Avez-vous informé vos salariés de leurs droits en matière de données ?", "type": "bool"},
+    "Collectez-vous des données personnelles de vos clients ?",
+    "Avez-vous mis à disposition une politique de confidentialité claire sur votre site ?",
+    "Conservez-vous un registre des traitements de données ?",
+    "Avez-vous désigné un DPO (Délégué à la protection des données) ?",
+    "Les données sont-elles stockées dans l’UE ou dans un pays avec un niveau de protection adéquat ?",
+    "Utilisez-vous des outils tiers (CRM, newsletter, analytics) ? Lesquels ?",
+    "Avez-vous mis en place un processus en cas de fuite de données ?",
+    "Vos formulaires incluent-ils une case à cocher pour consentement explicite ?",
+    "Conservez-vous les données plus de 3 ans sans action de l'utilisateur ?",
+    "Avez-vous informé vos salariés de leurs droits en matière de données ?",
 ]
 
 st.title("Outil d'Audit de Conformité RGPD")
 
-# Collect responses
+# Collecte des réponses
 responses = {}
-for idx, item in enumerate(QUESTIONS):
-    if item['type'] == 'bool':
-        responses[idx] = st.radio(item['q'], ["Oui", "Non"], key=idx)
+for i, q in enumerate(QUESTIONS):
+    if i == 5:  # question textuelle
+        responses[i] = st.text_input(q, key=i)
     else:
-        responses[idx] = st.text_input(item['q'], key=idx)
+        responses[i] = st.radio(q, ["Oui", "Non"], key=i)
 
 if st.button("Générer le rapport PDF"):
-    # Scoring
-    max_score = sum(1 for q in QUESTIONS if q['type']=='bool')
-    score = sum(1 for idx,q in enumerate(QUESTIONS) if q['type']=='bool' and responses[idx]=="Oui")
+    # Score
+    max_score = sum(1 for i in range(10) if i != 5)
+    score = sum(1 for i, ans in responses.items() if i != 5 and ans == "Oui")
 
-    # Analysis and recommendations
-    analysis = []
-    recommendations = []
-    links = {
-        "CNIL Guide": "https://www.cnil.fr/fr/rgpd-de-quoi-parle-t-on",
-        "Documentation UE": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:32016R0679",
+    # Recommandations et liens légaux
+    recommendations = {i: f"Mettre en place: {QUESTIONS[i]}" for i in range(10) if i != 5 and responses[i] == "Non"}
+    links_detail = {
+        0: ("https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre2#article6",
+            "« Le traitement n'est licite que si... » (Article 6 RGPD)"),
+        3: ("https://www.cnil.fr/fr/reglement-europeen-protection-donnees/chapitre4#article37",
+            "« Article 37 – Désignation du DPO. »"),
+        # Autres: renvoi vers guide CNIL général
     }
-    for idx,q in enumerate(QUESTIONS):
-        if q['type']=='bool' and responses[idx]=="Non":
-            analysis.append(f"{q['q']} -> Non")
-            recommendations.append(f"Mettre en place: {q['q']}")
 
-    # Chart
+    # Tips par domaine
+    tips = {
+        0: "Limitez la collecte aux données strictement nécessaires et définissez des durées de conservation.",
+        7: "Privilégiez le consentement granulaire et documentez chaque choix de l'utilisateur.",
+    }
+
+    # Graphique
     fig, ax = plt.subplots()
-    ax.bar(['Conformité', 'Manquants'], [score, max_score-score])
+    ax.bar(["Conformité", "Manquants"], [score, max_score-score])
     ax.set_ylim(0, max_score)
-    st.pyplot(fig)
 
-    # Generate PDF
-    pdf_buffer = generate_pdf(responses, score, max_score, analysis, recommendations, links)
+    # Conclusion
+    conclusion = (
+        "Pour aller plus loin, consultez les ressources CNIL et prévoyez une revue annuelle. "
+        "Mettez en place une gouvernance transverse et formez régulièrement vos équipes."
+    )
+
+    # Génération PDF
+    pdf = generate_pdf(responses, score, max_score, recommendations, links_detail, tips, conclusion, fig)
     st.download_button(
         label="Télécharger le rapport PDF",
-        data=pdf_buffer,
+        data=pdf,
         file_name="rapport_rgpd.pdf",
         mime="application/pdf"
     )

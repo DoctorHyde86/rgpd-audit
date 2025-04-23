@@ -89,15 +89,16 @@ def generate_pdf(responses, score, max_score, recommendations, links_detail, tip
             c.setFillColor(colors.white)
             c.setFont("Helvetica-Bold", 10)
             c.drawString(3.2*cm, y, "En savoir plus")
-            # Lien URL
-            url, citation = links_detail.get(idx)
-            c.linkURL(url, (3*cm, y-0.2*cm, 15*cm, y+0.6*cm))
+            # Lien URL et citation
+            url, citation = links_detail.get(idx, (None, None))
+            if url:
+                c.linkURL(url, (3*cm, y-0.2*cm, 15*cm, y+0.6*cm))
             y -= 1*cm
-            # Citation
-            c.setFont("Helvetica-Oblique", 9)
-            c.setFillColor(colors.black)
-            c.drawString(3.2*cm, y, citation)
-            y -= 0.7*cm
+            if citation:
+                c.setFont("Helvetica-Oblique", 9)
+                c.setFillColor(colors.black)
+                c.drawString(3.2*cm, y, citation)
+                y -= 0.7*cm
 
         # Encadré Tip
         tip = tips.get(idx)
